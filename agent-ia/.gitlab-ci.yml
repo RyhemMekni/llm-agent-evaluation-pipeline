@@ -25,7 +25,6 @@ test:
   script:
     - cd agent-ia
     - mvn -B test
-
 llm-as-judge:
   stage: evaluate
   image: maven:3.9-eclipse-temurin-21
@@ -50,8 +49,8 @@ llm-as-judge:
         "-Dspring.ai.openai.base-url=https://api.groq.com/openai/v1"
         "-Dspring.ai.openai.chat.model=openai/gpt-oss-120b"
         "-Dserver.port=8081" &
-    - sleep 30
-    - curl -f http://localhost:8081/api/evaluateur/health || exit 1
+    - sleep 90
+    - for i in 1 2 3 4 5; do curl -f http://localhost:8081/api/evaluateur/health && break || sleep 15; done
     - echo "Agent 2 (Evaluateur) operationnel sur port 8081"
 
     # Lancer une évaluation A2A réelle
@@ -59,5 +58,3 @@ llm-as-judge:
     - curl -f "http://localhost:8081/api/evaluateur/evaluer?testId=CI-TEST1&question=Qu%27est-ce%20que%20le%20SAST%3F&contexte=SAST%20designe%20l%27analyse%20statique%20du%20code" || exit 1
     - echo "Evaluation A2A terminee avec succes"
   allow_failure: true
-  variables:
-    GROQ_API_KEY: $GROQ_API_KEY
