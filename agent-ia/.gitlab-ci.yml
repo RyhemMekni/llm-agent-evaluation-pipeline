@@ -1,6 +1,7 @@
 stages:
   - build
   - test
+  - evaluate
 
 variables:
   MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
@@ -9,6 +10,7 @@ variables:
 cache:
   paths:
     - agent-ia/.m2/repository/
+    - agent-evaluateur/.m2/repository/
 
 build:
   stage: build
@@ -23,3 +25,39 @@ test:
   script:
     - cd agent-ia
     - mvn -B test
+
+llm-as-judge:
+  stage: evaluate
+  image: maven:3.9-eclipse-temurin-21
+  script:
+    - echo "=== LLM-as-Judge - Evaluation A2A ==="
+
+    # Démarrer Agent 1 (agent-ia) en arrière-plan
+    - cd agent-ia
+    - mvn spring-boot:run
+        "-Dspring.ai.openai.api-key=${GROQ_API_KEY}"
+        "-Dspring.ai.openai.base-url=https://api.groq.com/openai/v1"
+        "-Dspring.ai.openai.chat.model=openai/gpt-oss-120b"
+        "-Dserver.port=8080" &
+    - sleep 30
+    - curl -f http://localhost:8080/api/agent/health || exit 1
+    - echo "Agent 1 operationnel sur port 8080"
+
+    # Démarrer Agent 2 (agent-evaluateur) en arrière-plan
+    - cd ../agent-evaluateur
+    - mvn spring-boot:run
+        "-Dspring.ai.openai.api-key=${GROQ_API_KEY}"
+        "-Dspring.ai.openai.base-url=https://api.groq.com/openai/v1"
+        "-Dspring.ai.openai.chat.model=openai/gpt-oss-120b"
+        "-Dserver.port=8081" &
+    - sleep 30
+    - curl -f http://localhost:8081/api/evaluateur/health || exit 1
+    - echo "Agent 2 (Evaluateur) operationnel sur port 8081"
+
+    # Lancer une évaluation A2A réelle
+    - echo "=== Test évaluation A2A ==="
+    - curl -f "http://localhost:8081/api/evaluateur/evaluer?testId=CI-TEST1&question=Qu%27est-ce%20que%20le%20SAST%3F&contexte=SAST%20designe%20l%27analyse%20statique%20du%20code" || exit 1
+    - echo "Evaluation A2A terminee avec succes"
+  allow_failure: true
+  variables:
+    GROQ_API_KEY: $GROQ_API_KEY
