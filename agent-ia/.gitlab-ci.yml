@@ -30,7 +30,7 @@ llm-as-judge:
   stage: evaluate
   image: maven:3.9-eclipse-temurin-21
   script:
-    - echo "=== LLM-as-Judge - Evaluation A2A ==="
+    - echo "=== LLM-as-Judge - Smoke test A2A (1 cas rapide) ==="
 
     - cd agent-ia
     - mvn spring-boot:run
@@ -52,8 +52,44 @@ llm-as-judge:
     - curl -f http://localhost:8081/api/evaluateur/health || exit 1
     - echo "Agent 2 (Evaluateur) operationnel sur port 8081"
 
-    - echo "=== Test évaluation A2A ==="
-    - curl -f "http://localhost:8081/api/evaluateur/evaluer?testId=CI-TEST1&question=Qu%27est-ce%20que%20le%20SAST%3F&contexte=SAST%20designe%20l%27analyse%20statique%20du%20code" || exit 1
-    - echo "Evaluation A2A terminee avec succes"
+    - echo "=== Test smoke - 1 cas ==="
+    - curl -f "http://localhost:8081/api/evaluateur/evaluer?testId=CI-SMOKE&question=Qu%27est-ce%20que%20le%20SAST%3F&contexte=SAST%20designe%20l%27analyse%20statique%20du%20code" || exit 1
+    - echo "Smoke test A2A termine avec succes"
   timeout: 20m
   allow_failure: true
+
+llm-as-judge-batch:
+  stage: evaluate
+  image: maven:3.9-eclipse-temurin-21
+  script:
+    - echo "=== LLM-as-Judge - BATCH COMPLET (10 cas du dataset) ==="
+
+    - cd agent-ia
+    - mvn spring-boot:run
+        "-Dspring.ai.openai.api-key=${GROQ_API_KEY}"
+        "-Dspring.ai.openai.base-url=https://api.groq.com/openai/v1"
+        "-Dspring.ai.openai.chat.model=openai/gpt-oss-120b"
+        "-Dserver.port=8080" &
+    - for i in $(seq 1 20); do curl -sf http://localhost:8080/api/agent/health && break || sleep 10; done
+    - curl -f http://localhost:8080/api/agent/health || exit 1
+
+    - cd ../agent-evaluateur
+    - mvn spring-boot:run
+        "-Dspring.ai.openai.api-key=${GROQ_API_KEY}"
+        "-Dspring.ai.openai.base-url=https://api.groq.com/openai/v1"
+        "-Dspring.ai.openai.chat.model=openai/gpt-oss-120b"
+        "-Dserver.port=8081" &
+    - for i in $(seq 1 20); do curl -sf http://localhost:8081/api/evaluateur/health && break || sleep 10; done
+    - curl -f http://localhost:8081/api/evaluateur/health || exit 1
+
+    - echo "=== Execution du batch sur 10 cas ==="
+    - curl -f --max-time 600 http://localhost:8081/api/evaluateur/batch -o batch-result.json || exit 1
+    - echo "=== Resultats ==="
+    - cat batch-result.json
+  when: manual
+  timeout: 30m
+  allow_failure: true
+  artifacts:
+    paths:
+      - agent-evaluateur/batch-result.json
+    expire_in: 1 week
