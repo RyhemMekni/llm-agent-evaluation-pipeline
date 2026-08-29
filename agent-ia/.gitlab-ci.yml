@@ -89,7 +89,4 @@ llm-as-judge-batch:
   when: manual
   timeout: 30m
   allow_failure: true
-  artifacts:
-    paths:
-      - agent-evaluateur/batch-result.json
-    expire_in: 1 week
+  
