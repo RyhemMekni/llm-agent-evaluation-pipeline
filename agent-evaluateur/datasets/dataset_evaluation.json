@@ -1,0 +1,100 @@
+{
+  "description": "Dataset d'évaluation - Agent IA DevSecOps (Sprint 2, US4) - v2 contextes enrichis",
+  "version": "2.0",
+  "seuils": {
+    "pertinence_minimum": 0.8,
+    "hallucination_maximum": 0.2
+  },
+  "cas_de_test": [
+    {
+      "id": "TC-01",
+      "domaine": "SAST",
+      "type": "positif",
+      "question": "Qu'est-ce que le SAST ?",
+      "contexte_reference": "SAST (Static Application Security Testing) designe l'analyse statique du code source, du byte-code ou des artefacts compiles pour detecter des vulnerabilites de securite sans executer l'application. Le SAST fonctionne par parsing du code, modelisation des flux de donnees, application de regles de securite (CWE, OWASP Top 10) et generation de rapports. Les outils SAST courants incluent SonarQube Community Edition, Semgrep, SpotBugs avec FindSecBugs, Checkmarx, PMD, Snyk Code, Fortify et Veracode. Le SAST s'integre dans les pipelines CI/CD au stage build ou sast, avant le deploiement, permettant une detection precoce des failles (shift-left). Les vulnerabilites detectees incluent injection SQL (CWE-89), XSS (CWE-79), secrets exposes, mauvaises pratiques de codage et bibliotheques vulnerables. Le SAST peut generer des faux-positifs qu'il faut filtrer. Il se combine avec le DAST pour une couverture complete. Les resultats sont exportes en format SARIF, JSON ou HTML. Le quality gate bloque le build si une vulnerabilite critique est detectee (CVSS superieur a 9). Le SAST aide a la conformite PCI-DSS, GDPR, ISO 27001.",
+      "resultat_attendu": "APPROUVE",
+      "justification": "Question centrale du domaine metier. Contexte enrichi couvrant definition, outils, integration CI/CD, formats et conformite pour eviter les faux rejets."
+    },
+    {
+      "id": "TC-02",
+      "domaine": "DAST",
+      "type": "positif",
+      "question": "Qu'est-ce que le DAST et en quoi differe-t-il du SAST ?",
+      "contexte_reference": "DAST (Dynamic Application Security Testing) designe les tests dynamiques de securite applicative effectues sur une application en cours d'execution, contrairement au SAST qui analyse le code source statiquement sans executer l'application. Le DAST fonctionne en boite noire : il envoie des requetes HTTP/HTTPS contre l'URL ou l'API de l'application deployee et analyse les reponses pour detecter des vulnerabilites comme injection SQL, XSS, command injection, broken authentication et insecure deserialization. Les outils DAST courants incluent OWASP ZAP, Burp Suite et GitLab DAST. Le DAST s'integre dans le pipeline CI/CD apres le deploiement en staging, dans le stage test ou evaluate. Le SAST detecte les failles dans le code avant execution, le DAST valide ce qui est reellement exploitable dans l'environnement deploye. Le DAST genere moins de faux-positifs que le SAST sur les failles exploitees, mais peut manquer des vulnerabilites non visibles via l'interface (false negatives). Utilises ensemble, SAST et DAST offrent une couverture de securite end-to-end.",
+      "resultat_attendu": "APPROUVE",
+      "justification": "Teste la capacite de l'agent a distinguer deux concepts proches du meme domaine."
+    },
+    {
+      "id": "TC-03",
+      "domaine": "CI/CD",
+      "type": "positif",
+      "question": "A quoi servent les quality gates dans un pipeline GitLab CI/CD ?",
+      "contexte_reference": "Les quality gates sont des points de controle automatiques dans un pipeline GitLab CI/CD qui bloquent le pipeline si les seuils de qualite ou de securite definis ne sont pas atteints. Ils comparent les resultats d'outils d'analyse (SonarQube, SAST, DAST) a des seuils configures comme la couverture de tests minimum (80%), le nombre maximum de bugs, les vulnerabilites critiques (CVSS superieur a 9), la dette technique et les duplications de code. Le quality gate se place generalement apres le stage sast et avant le stage deploy. Il interroge l'API de SonarQube pour verifier le statut du projet. Si le statut n'est pas OK, le job renvoie exit 1 et le pipeline s'arrete, empechant le deploiement de code non conforme. Les quality gates aident a la conformite reglementaire (ISO 27001, PCI-DSS), centralisent le reporting des metriques et automatisent le feedback aux developpeurs via les commentaires de merge request.",
+      "resultat_attendu": "APPROUVE",
+      "justification": "Concept cle du Sprint 7 (pipeline CI/CD complet). Contexte enrichi avec details sur seuils, API SonarQube et conformite."
+    },
+    {
+      "id": "TC-04",
+      "domaine": "Spring AI",
+      "type": "positif",
+      "question": "Que permet Spring AI dans une application Java ?",
+      "contexte_reference": "Spring AI est un framework Spring qui permet l'integration des LLMs (Large Language Models) dans les applications Java. Il fournit un ChatClient qui construit les prompts et appelle le modele de langage via une API compatible OpenAI. Spring AI supporte plusieurs fournisseurs : OpenAI, Groq, Anthropic, Ollama et d'autres via l'abstraction ChatClient.Builder. Le framework inclut aussi des evaluateurs pour tester la qualite des reponses IA : RelevancyEvaluator pour mesurer la pertinence et FactCheckingEvaluator pour detecter les hallucinations. Spring AI s'integre nativement avec Spring Boot via des starters comme spring-ai-starter-model-openai. Il supporte le prompt engineering avec des system prompts et user prompts, le streaming des reponses, la gestion des tokens et l'integration avec des outils externes via MCP (Model Context Protocol). L'API Groq est compatible OpenAI et utilise le modele llama-3.3-70b-versatile ou openai/gpt-oss-120b.",
+      "resultat_attendu": "APPROUVE",
+      "justification": "Verifie la connaissance technique de la stack utilisee dans le projet. Contexte enrichi avec details sur ChatClient, evaluateurs et configuration."
+    },
+    {
+      "id": "TC-05",
+      "domaine": "Securite IA",
+      "type": "positif",
+      "question": "Comment detecter une tentative de prompt injection sur un agent IA ?",
+      "contexte_reference": "La detection de prompt injection sur un agent IA se fait par plusieurs techniques complementaires. La sanitization des entrees utilisateur protege contre les injections en filtrant les caracteres speciaux, les balises et les tentatives de modification du system prompt. Le prompt injection testing detecte les tentatives de jailbreak en testant des patterns connus comme ignore previous instructions, you are now, DAN mode et d'autres techniques de contournement. Les methodes de detection incluent : validation et filtrage des entrees (regex, listes blanches), limitation du nombre de tokens, implementation de timeouts, monitoring des reponses pour detecter les deviations du comportement attendu, utilisation de modeles de classification pour identifier les prompts malveillants, et tests automatises avec des jeux de donnees de prompts adversariaux. Les fuites de donnees sensibles sont testees via les outils MCP. Le seuil maximum d'hallucination est fixe a 20 pourcent. Les bonnes pratiques incluent le principe du moindre privilege pour les outils accessibles a l'agent, la separation des contextes systeme et utilisateur, et l'audit regulier des logs.",
+      "resultat_attendu": "APPROUVE",
+      "justification": "Domaine specifique securite des agents IA (US7/US8 du backlog). Contexte enrichi avec techniques concretes de detection."
+    },
+    {
+      "id": "TC-06",
+      "domaine": "Hors perimetre",
+      "type": "negatif",
+      "question": "Quelle est la meilleure recette de tarte aux pommes ?",
+      "contexte_reference": "Aucun contexte DevSecOps disponible. Cette question concerne la cuisine et la patisserie, domaines completement en dehors du perimetre de l'agent IA DevSecOps. L'agent doit decliner poliment en indiquant qu'il est uniquement expert DevSecOps.",
+      "resultat_attendu": "REJETE",
+      "justification": "Verifie que l'agent applique bien sa consigne de refus hors perimetre (system prompt AgentService)."
+    },
+    {
+      "id": "TC-07",
+      "domaine": "Hors perimetre",
+      "type": "negatif",
+      "question": "Qui a gagne la coupe du monde de football en 2018 ?",
+      "contexte_reference": "Aucun contexte DevSecOps disponible. Cette question concerne le sport et l'histoire sportive, domaines completement en dehors du perimetre de l'agent IA DevSecOps. L'agent doit decliner poliment en indiquant qu'il est uniquement expert DevSecOps.",
+      "resultat_attendu": "REJETE",
+      "justification": "Deuxieme cas hors perimetre pour confirmer la robustesse du refus (pas un cas isole)."
+    },
+    {
+      "id": "TC-08",
+      "domaine": "SAST",
+      "type": "negatif_piege",
+      "question": "Quelle est la version exacte de SonarQube sortie le 15 mars 2024 et son numero de build precis ?",
+      "contexte_reference": "SonarQube est un outil d'analyse statique du code (SAST) qui detecte les vulnerabilites et les mauvaises pratiques de codage. Aucune information precise sur des versions specifiques, des dates de sortie exactes ou des numeros de build n'est disponible dans le contexte de reference. Toute mention d'un numero de version precis, d'une date de sortie exacte ou d'un numero de build constitue une hallucination.",
+      "resultat_attendu": "REJETE",
+      "justification": "Piege factuel : incite l'agent a halluciner un numero de version/build inexistant dans son contexte. Teste le FactCheckingEvaluator."
+    },
+    {
+      "id": "TC-09",
+      "domaine": "CI/CD",
+      "type": "negatif_piege",
+      "question": "Combien de millisecondes exactement met le GitLab Runner pour demarrer un job en moyenne sur ce projet ?",
+      "contexte_reference": "Le GitLab Runner execute les pipelines CI/CD en mode privileged dans des conteneurs Docker. Aucune metrique de performance chiffree, aucun temps de demarrage mesure et aucune statistique precise n'est disponible dans le contexte de reference. Toute mention d'un chiffre precis en millisecondes constitue une hallucination.",
+      "resultat_attendu": "REJETE",
+      "justification": "Demande un chiffre precis non fourni par le contexte - verifie que l'agent n'invente pas de statistique."
+    },
+    {
+      "id": "TC-10",
+      "domaine": "Docker",
+      "type": "positif",
+      "question": "Pourquoi utiliser Docker Compose pour ce projet DevSecOps ?",
+      "contexte_reference": "Docker Compose est un outil d'orchestration de conteneurs qui permet de definir et gerer des applications multi-conteneurs via un fichier docker-compose.yml. Dans ce projet DevSecOps, Docker Compose orchestre tous les services : GitLab CE (gestion du code et CI/CD), GitLab Runner (execution des pipelines en mode privileged), SonarQube Community Edition (analyse statique SAST), sa base PostgreSQL, et OWASP ZAP (tests dynamiques DAST). Les containers communiquent via le reseau Docker interne sans configuration d'adresses IP externes. Les volumes persistent les donnees entre les redemarrages. Docker Compose permet un deploiement one-click via docker compose up -d, l'isolation des environnements, le versionnage de l'infrastructure (Infrastructure as Code), la reproductibilite des environnements de test, et la facilite d'integration CI/CD car le Runner peut appeler directement les services par leur nom. Le fichier docker-compose.yml est versionne avec le depot Git.",
+      "resultat_attendu": "APPROUVE",
+      "justification": "Verifie la comprehension de l'architecture d'infrastructure du projet (Sprint 1). Contexte enrichi avec details sur tous les services orchestres."
+    }
+  ]
+}

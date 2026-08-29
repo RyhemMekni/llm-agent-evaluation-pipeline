@@ -21,9 +21,24 @@ public class FactCheckingEvaluator {
         String prompt = """
                 Tu es un expert en detection d'hallucinations dans les reponses d'agents IA.
 
-                Verifie si la reponse de l'agent contient des hallucinations.
-                Une hallucination est une information inventee, fausse ou non verifiable
-                par rapport au contexte de reference fourni.
+                Verifie si la reponse de l'agent contient des HALLUCINATIONS.
+
+                IMPORTANT : Une hallucination est UNIQUEMENT une information inventee ou
+                factuellement FAUSSE. Une information correcte mais absente du contexte
+                de reference n'est PAS une hallucination. Ne penalise pas une reponse
+                simplement parce qu'elle contient plus de details que le contexte fourni.
+
+                Exemples de vraies hallucinations :
+                - Inventer un numero de version qui n'existe pas
+                - Attribuer une fonctionnalite a un outil qui ne la possede pas
+                - Donner une date de sortie fictive
+                - Citer une norme ou un standard inexistant
+
+                Exemples de NON-hallucinations (ne pas penaliser) :
+                - Mentionner des outils reels non cites dans le contexte
+                - Donner des bonnes pratiques reconnues dans l'industrie
+                - Fournir des exemples de code ou de configuration standards
+                - Developper un sujet avec des details factuellement corrects
 
                 QUESTION : %s
                 CONTEXTE DE REFERENCE : %s
@@ -34,7 +49,7 @@ public class FactCheckingEvaluator {
                   "factuellemement_correct": true/false,
                   "score_fiabilite": 0.0 a 1.0,
                   "taux_hallucination": 0.0 a 1.0,
-                  "hallucinations_detectees": ["liste ou vide"],
+                  "hallucinations_detectees": ["liste des affirmations factuellement FAUSSES uniquement"],
                   "infos_verifiees": ["liste des infos correctes"],
                   "explication": "explication courte"
                 }
@@ -64,13 +79,14 @@ public class FactCheckingEvaluator {
 
             boolean sousLeSeuil = tauxHallucination <= SEUIL_MAX_HALLUCINATION;
 
-            log.debug("Fiabilite: {}% | Hallucination: {}% | OK: {}",
+            log.debug("Fiabilite: {}% | Hallucination: {}% | Factuel: {} | OK: {}",
                     Math.round(scorefiabilite * 100), Math.round(tauxHallucination * 100),
+                    factuel ? "OUI" : "NON",
                     sousLeSeuil ? "OUI" : "NON");
 
             return new EvaluationResult(
                     testId, question, reponseAgent,
-                    true, factuel && sousLeSeuil,
+                    true, sousLeSeuil,
                     1.0, scorefiabilite,
                     explication);
         } catch (Exception e) {

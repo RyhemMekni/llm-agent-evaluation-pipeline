@@ -2,6 +2,7 @@ package com.pfe.evaluateur.controller;
 
 import com.pfe.evaluateur.model.EvaluationRecord;
 import com.pfe.evaluateur.model.VerdictEvaluation;
+import com.pfe.evaluateur.service.BatchEvaluationService;
 import com.pfe.evaluateur.service.EvaluateurAgentService;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,10 +13,13 @@ import java.util.*;
 public class EvaluateurController {
 
     private final EvaluateurAgentService evaluateurService;
+    private final BatchEvaluationService batchService;
     private final List<EvaluationRecord> history = new ArrayList<>();
 
-    public EvaluateurController(EvaluateurAgentService evaluateurService) {
+    public EvaluateurController(EvaluateurAgentService evaluateurService,
+            BatchEvaluationService batchService) {
         this.evaluateurService = evaluateurService;
+        this.batchService = batchService;
     }
 
     @GetMapping("/evaluer")
@@ -28,23 +32,30 @@ public class EvaluateurController {
         return verdict;
     }
 
+    @GetMapping("/batch")
+    public Map<String, Object> batch() {
+        return batchService.executerBatch();
+    }
+
     @GetMapping("/history")
-    public List<EvaluationRecord> getHistory() { return history; }
+    public List<EvaluationRecord> getHistory() {
+        return history;
+    }
 
     @GetMapping("/stats")
     public Map<String, Object> getStats() {
         Map<String, Object> stats = new HashMap<>();
-        int total      = history.size();
+        int total = history.size();
         long approuves = history.stream().filter(EvaluationRecord::isApprouve).count();
         double pertMoy = history.stream().mapToDouble(EvaluationRecord::getScorePertinence).average().orElse(0);
-        double facMoy  = history.stream().mapToDouble(EvaluationRecord::getScoreFactuel).average().orElse(0);
+        double facMoy = history.stream().mapToDouble(EvaluationRecord::getScoreFactuel).average().orElse(0);
         double hallMoy = history.stream().mapToDouble(r -> 1 - r.getScoreFactuel()).average().orElse(0);
-        stats.put("total",                total);
-        stats.put("approuves",            approuves);
-        stats.put("rejetes",              total - approuves);
-        stats.put("tauxApprobation",      total > 0 ? (int) Math.round((double) approuves / total * 100) : 0);
-        stats.put("pertinenceMoyenne",    Math.round(pertMoy * 100));
-        stats.put("fiabiliteMoyenne",     Math.round(facMoy  * 100));
+        stats.put("total", total);
+        stats.put("approuves", approuves);
+        stats.put("rejetes", total - approuves);
+        stats.put("tauxApprobation", total > 0 ? (int) Math.round((double) approuves / total * 100) : 0);
+        stats.put("pertinenceMoyenne", Math.round(pertMoy * 100));
+        stats.put("fiabiliteMoyenne", Math.round(facMoy * 100));
         stats.put("hallucinationMoyenne", Math.round(hallMoy * 100));
         return stats;
     }
@@ -56,5 +67,7 @@ public class EvaluateurController {
     }
 
     @GetMapping("/health")
-    public String health() { return "Agent Evaluateur operationnel sur port 8081"; }
+    public String health() {
+        return "Agent Evaluateur operationnel sur port 8081";
+    }
 }
