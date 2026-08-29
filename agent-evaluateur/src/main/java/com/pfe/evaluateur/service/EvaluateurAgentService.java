@@ -1,5 +1,7 @@
 package com.pfe.evaluateur.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pfe.evaluateur.evaluation.FactCheckingEvaluator;
 import com.pfe.evaluateur.evaluation.RelevancyEvaluator;
 import com.pfe.evaluateur.evaluation.EvaluationResult;
@@ -18,6 +20,7 @@ public class EvaluateurAgentService {
     private final RelevancyEvaluator relevancyEvaluator;
     private final FactCheckingEvaluator factCheckingEvaluator;
     private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper;
 
     // URL de l'Agent 1 (projet-ia) — port 8080
     private static final String AGENT1_URL = "http://localhost:8080/api/agent/ask?question={question}";
@@ -26,42 +29,53 @@ public class EvaluateurAgentService {
         this.relevancyEvaluator = new RelevancyEvaluator(builder);
         this.factCheckingEvaluator = new FactCheckingEvaluator(builder);
         this.restTemplate = new RestTemplate();
+        this.objectMapper = new ObjectMapper();
     }
 
     /**
      * Pipeline complet :
      * 1. Envoie la question à l'Agent 1
-     * 2. Récupère la réponse
-     * 3. Évalue la pertinence (RelevancyEvaluator)
-     * 4. Détecte les hallucinations (FactCheckingEvaluator)
+     * 2. Récupère la réponse ET le contexte MCP utilisé par l'Agent 1
+     * 3. Évalue la pertinence (RelevancyEvaluator) avec le vrai contexte MCP
+     * 4. Détecte les hallucinations (FactCheckingEvaluator) avec le contexte de
+     * référence du dataset
      * 5. Retourne un VerdictEvaluation consolidé
      */
-    public VerdictEvaluation evaluerAgent(String testId, String question, String contexte) {
+    public VerdictEvaluation evaluerAgent(String testId, String question, String contexteReference) {
 
         log.info("========================================");
         log.info("  AGENT ÉVALUATEUR INDÉPENDANT");
         log.info("========================================");
         log.info("  Question : {}", question);
 
-        // ÉTAPE 1 — Appel Agent 1
+        // ÉTAPE 1 — Appel Agent 1 (récupère réponse + contexte MCP réel)
+        String rawResponse;
         String reponseAgent1;
+        String contexteMcpUtilise;
         try {
-            reponseAgent1 = restTemplate.getForObject(AGENT1_URL, String.class, question);
-            log.info("  Réponse Agent 1 reçue : {}", reponseAgent1);
+            rawResponse = restTemplate.getForObject(AGENT1_URL, String.class, question);
+            JsonNode json = objectMapper.readTree(rawResponse);
+            reponseAgent1 = json.has("reponse") ? json.get("reponse").asText() : rawResponse;
+            contexteMcpUtilise = json.has("contexteMcpUtilise")
+                    ? json.get("contexteMcpUtilise").asText()
+                    : "Contexte MCP non disponible";
+            log.info("  Réponse Agent 1 reçue (extrait) : {}",
+                    reponseAgent1.length() > 200 ? reponseAgent1.substring(0, 200) + "..." : reponseAgent1);
+            log.debug("  Contexte MCP utilisé par Agent 1 : {}", contexteMcpUtilise);
         } catch (Exception e) {
             log.error("  ERREUR : Agent 1 inaccessible — {}", e.getMessage());
             return VerdictEvaluation.erreur(testId, question, "Agent 1 inaccessible : " + e.getMessage());
         }
 
-        // ÉTAPE 2 — Évaluation Pertinence
-        log.info("--- Évaluation Pertinence (RelevancyEvaluator) ---");
+        // ÉTAPE 2 — Évaluation Pertinence avec le CONTEXTE MCP RÉEL de l'Agent 1
+        log.info("--- Évaluation Pertinence (RelevancyEvaluator) — avec contexte MCP réel ---");
         EvaluationResult resultRelevancy = relevancyEvaluator.evaluate(
-                testId + "-REL", question, contexte, reponseAgent1);
+                testId + "-REL", question, contexteMcpUtilise, reponseAgent1);
 
-        // ÉTAPE 3 — Détection Hallucinations
-        log.info("--- Détection Hallucinations (FactCheckingEvaluator) ---");
+        // ÉTAPE 3 — Détection Hallucinations avec le contexte de référence du dataset
+        log.info("--- Détection Hallucinations (FactCheckingEvaluator) — avec contexte de vérité ---");
         EvaluationResult resultFactChecking = factCheckingEvaluator.evaluate(
-                testId + "-FC", question, contexte, reponseAgent1);
+                testId + "-FC", question, contexteReference, reponseAgent1);
 
         // ÉTAPE 4 — Verdict consolidé
         VerdictEvaluation verdict = VerdictEvaluation.builder()

@@ -6,6 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -31,11 +33,16 @@ public class AgentService {
             {contexte}
             """;
 
-    public String ask(String question) {
+    /**
+     * Retourne à la fois la réponse ET le contexte MCP utilisé pour la générer.
+     * Permet à l'Agent Évaluateur de mesurer la cohérence réponse / contexte MCP
+     * réel.
+     */
+    public Map<String, String> ask(String question) {
         log.debug("Traitement de la question: {}", question);
 
-        String contexte = mcpToolsService.getContexte(question);
-        String systemPrompt = SYSTEM_PROMPT.replace("{contexte}", contexte);
+        String contexteMcp = mcpToolsService.getContexte(question);
+        String systemPrompt = SYSTEM_PROMPT.replace("{contexte}", contexteMcp);
 
         ChatClient chatClient = chatClientBuilder.build();
 
@@ -47,6 +54,9 @@ public class AgentService {
                 .content();
 
         log.debug("Réponse générée: {}", reponse);
-        return reponse;
+
+        return Map.of(
+                "reponse", reponse,
+                "contexteMcpUtilise", contexteMcp);
     }
 }

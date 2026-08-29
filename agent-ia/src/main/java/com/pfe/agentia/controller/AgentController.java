@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -31,13 +32,16 @@ public class AgentController {
                     .body(Map.of("error", "Question trop longue (max 500 caractères)"));
         }
 
-        String reponse = agentService.ask(question);
+        Map<String, String> result = agentService.ask(question);
 
-        return ResponseEntity.ok(Map.of(
-                "question", question,
-                "reponse", reponse,
-                "agent", "DevSecOps Expert",
-                "status", "success"));
+        Map<String, Object> response = new HashMap<>();
+        response.put("question", question);
+        response.put("reponse", result.get("reponse"));
+        response.put("contexteMcpUtilise", result.get("contexteMcpUtilise"));
+        response.put("agent", "DevSecOps Expert");
+        response.put("status", "success");
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/health")

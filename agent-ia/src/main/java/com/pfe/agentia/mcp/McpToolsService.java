@@ -51,7 +51,8 @@ public class McpToolsService {
 
     private List<String> filtrerParMotsCles(List<String> lignes, String question) {
         String questionLower = question.toLowerCase();
-        String[] motsCles = questionLower.split("\\s+");
+        String questionNettoyee = questionLower.replaceAll("[?!.,;:'\"()\\[\\]]", " ");
+        String[] motsCles = questionNettoyee.split("\\s+");
 
         return lignes.stream()
                 .filter(ligne -> {
