@@ -118,6 +118,7 @@ dependency-check:
     - cd agent-ia
     - mvn dependency-check:check -DskipTests
         "-DfailBuildOnCVSS=9"
+        "-DnvdApiKey=${NVD_API_KEY}"
     - echo "=== Dependency-Check termine ==="
   timeout: 30m
-  allow_failure: true  
+  allow_failure: true
