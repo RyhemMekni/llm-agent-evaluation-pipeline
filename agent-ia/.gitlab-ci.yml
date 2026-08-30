@@ -115,10 +115,14 @@ dependency-check:
   image: maven:3.9-eclipse-temurin-21
   script:
     - echo "=== OWASP Dependency-Check ==="
+    - echo "NVD Key length = $(echo -n ${NVD_API_KEY} | wc -c) chars"
     - cd agent-ia
-    - mvn dependency-check:check -DskipTests
+    - mvn org.owasp:dependency-check-maven:10.0.4:check
+        -DskipTests
         "-DfailBuildOnCVSS=9"
         "-DnvdApiKey=${NVD_API_KEY}"
+        "-DnvdApiDelay=6000"
+        "-DnvdMaxRetryCount=3"
     - echo "=== Dependency-Check termine ==="
-  timeout: 30m
+  timeout: 45m
   allow_failure: true
