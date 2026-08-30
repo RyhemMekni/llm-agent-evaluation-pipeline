@@ -2,6 +2,7 @@ package com.pfe.evaluateur.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pfe.evaluateur.evaluation.ConformityEvaluator;
 import com.pfe.evaluateur.evaluation.FactCheckingEvaluator;
 import com.pfe.evaluateur.evaluation.RelevancyEvaluator;
 import com.pfe.evaluateur.evaluation.EvaluationResult;
@@ -19,28 +20,20 @@ public class EvaluateurAgentService {
 
     private final RelevancyEvaluator relevancyEvaluator;
     private final FactCheckingEvaluator factCheckingEvaluator;
+    private final ConformityEvaluator conformityEvaluator;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
-    // URL de l'Agent 1 (projet-ia) — port 8080
     private static final String AGENT1_URL = "http://localhost:8080/api/agent/ask?question={question}";
 
     public EvaluateurAgentService(ChatClient.Builder builder) {
         this.relevancyEvaluator = new RelevancyEvaluator(builder);
         this.factCheckingEvaluator = new FactCheckingEvaluator(builder);
+        this.conformityEvaluator = new ConformityEvaluator(builder);
         this.restTemplate = new RestTemplate();
         this.objectMapper = new ObjectMapper();
     }
 
-    /**
-     * Pipeline complet :
-     * 1. Envoie la question à l'Agent 1
-     * 2. Récupère la réponse ET le contexte MCP utilisé par l'Agent 1
-     * 3. Évalue la pertinence (RelevancyEvaluator) avec le vrai contexte MCP
-     * 4. Détecte les hallucinations (FactCheckingEvaluator) avec le contexte de
-     * référence du dataset
-     * 5. Retourne un VerdictEvaluation consolidé
-     */
     public VerdictEvaluation evaluerAgent(String testId, String question, String contexteReference) {
 
         log.info("========================================");
@@ -48,7 +41,7 @@ public class EvaluateurAgentService {
         log.info("========================================");
         log.info("  Question : {}", question);
 
-        // ÉTAPE 1 — Appel Agent 1 (récupère réponse + contexte MCP réel)
+        // ÉTAPE 1 — Appel Agent 1
         String rawResponse;
         String reponseAgent1;
         String contexteMcpUtilise;
@@ -67,17 +60,22 @@ public class EvaluateurAgentService {
             return VerdictEvaluation.erreur(testId, question, "Agent 1 inaccessible : " + e.getMessage());
         }
 
-        // ÉTAPE 2 — Évaluation Pertinence avec le CONTEXTE MCP RÉEL de l'Agent 1
-        log.info("--- Évaluation Pertinence (RelevancyEvaluator) — avec contexte MCP réel ---");
+        // ÉTAPE 2 — Évaluation Pertinence (avec contexte MCP réel)
+        log.info("--- Évaluation Pertinence (RelevancyEvaluator) ---");
         EvaluationResult resultRelevancy = relevancyEvaluator.evaluate(
                 testId + "-REL", question, contexteMcpUtilise, reponseAgent1);
 
-        // ÉTAPE 3 — Détection Hallucinations avec le contexte de référence du dataset
-        log.info("--- Détection Hallucinations (FactCheckingEvaluator) — avec contexte de vérité ---");
+        // ÉTAPE 3 — Détection Hallucinations (avec contexte de référence)
+        log.info("--- Détection Hallucinations (FactCheckingEvaluator) ---");
         EvaluationResult resultFactChecking = factCheckingEvaluator.evaluate(
                 testId + "-FC", question, contexteReference, reponseAgent1);
 
-        // ÉTAPE 4 — Verdict consolidé
+        // ÉTAPE 4 — Évaluation Conformité (nouveau - Sprint 4)
+        log.info("--- Évaluation Conformité (ConformityEvaluator) ---");
+        EvaluationResult resultConformity = conformityEvaluator.evaluate(
+                testId + "-CONF", question, contexteReference, reponseAgent1);
+
+        // ÉTAPE 5 — Verdict consolidé multi-critères
         VerdictEvaluation verdict = VerdictEvaluation.builder()
                 .testId(testId)
                 .question(question)
@@ -88,25 +86,35 @@ public class EvaluateurAgentService {
                 .sansHallucination(resultFactChecking.sansHallucination())
                 .explications(
                         "Pertinence: " + resultRelevancy.explication()
-                                + " | Factuel: " + resultFactChecking.explication())
-                .verdict(determinerVerdict(resultRelevancy, resultFactChecking))
+                                + " | Factuel: " + resultFactChecking.explication()
+                                + " | Conformité: " + resultConformity.explication())
+                .verdict(determinerVerdict(resultRelevancy, resultFactChecking, resultConformity))
                 .build();
 
         log.info("========================================");
         log.info("  VERDICT FINAL : {}", verdict.verdict());
-        log.info("  Score Pertinence : {}%", Math.round(verdict.scorePertinence() * 100));
-        log.info("  Score Factuel    : {}%", Math.round(verdict.scoreFactuel() * 100));
+        log.info("  Score Pertinence  : {}%", Math.round(verdict.scorePertinence() * 100));
+        log.info("  Score Factuel     : {}%", Math.round(verdict.scoreFactuel() * 100));
+        log.info("  Score Conformité  : {}%", Math.round(resultConformity.scorePertinence() * 100));
         log.info("========================================");
 
         return verdict;
     }
 
-    private String determinerVerdict(EvaluationResult relevancy, EvaluationResult factChecking) {
-        if (relevancy.pertinent() && factChecking.sansHallucination()) {
-            return "✅ APPROUVÉ — Réponse pertinente et fiable";
-        } else if (!relevancy.pertinent() && !factChecking.sansHallucination()) {
+    private String determinerVerdict(EvaluationResult relevancy,
+            EvaluationResult factChecking,
+            EvaluationResult conformity) {
+        boolean pertinent = relevancy.pertinent();
+        boolean fiable = factChecking.sansHallucination();
+        boolean conforme = conformity.pertinent(); // pertinent() = estConforme dans ConformityEvaluator
+
+        if (pertinent && fiable && conforme) {
+            return "✅ APPROUVÉ — Réponse pertinente, fiable et conforme";
+        } else if (!conforme) {
+            return "❌ REJETÉ — Non conforme au périmètre métier";
+        } else if (!pertinent && !fiable) {
             return "❌ REJETÉ — Réponse non pertinente ET hallucinée";
-        } else if (!relevancy.pertinent()) {
+        } else if (!pertinent) {
             return "⚠️ REJETÉ — Réponse non pertinente";
         } else {
             return "⚠️ REJETÉ — Hallucinations détectées";
