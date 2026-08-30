@@ -2,6 +2,7 @@ stages:
   - build
   - test
   - evaluate
+  - sast
 
 variables:
   MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
@@ -89,4 +90,19 @@ llm-as-judge-batch:
   when: manual
   timeout: 30m
   allow_failure: true
-  
+
+sonarqube-sast:
+  stage: sast
+  image: maven:3.9-eclipse-temurin-21
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"
+  script:
+    - echo "=== SAST - Analyse SonarQube ==="
+    - cd agent-ia
+    - mvn clean verify sonar:sonar
+        -DskipTests
+        "-Dsonar.projectKey=agent-ia"
+        "-Dsonar.projectName=agent-ia"
+        "-Dsonar.host.url=${SONAR_HOST_URL}"
+        "-Dsonar.token=${SONAR_TOKEN}"
+  allow_failure: true
