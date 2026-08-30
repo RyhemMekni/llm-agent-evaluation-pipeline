@@ -109,3 +109,15 @@ sonarqube-sast:
         "-Dsonar.qualitygate.wait=false"
         "-Dsonar.scm.provider=git"
   allow_failure: true
+
+dependency-check:
+  stage: sast
+  image: maven:3.9-eclipse-temurin-21
+  script:
+    - echo "=== OWASP Dependency-Check ==="
+    - cd agent-ia
+    - mvn dependency-check:check -DskipTests
+        "-DfailBuildOnCVSS=9"
+    - echo "=== Dependency-Check termine ==="
+  timeout: 30m
+  allow_failure: true  

@@ -96,6 +96,18 @@
 				<artifactId>sonar-maven-plugin</artifactId>
 				<version>3.11.0.3922</version>
 			</plugin>
+			<plugin>
+                <groupId>org.owasp</groupId>
+                <artifactId>dependency-check-maven</artifactId>
+                <version>9.0.9</version>
+                <configuration>
+                    <failBuildOnCVSS>9</failBuildOnCVSS>
+                    <formats>
+                       <format>HTML</format>
+                       <format>JSON</format>
+                    </formats>
+                </configuration>
+            </plugin>
 		</plugins>
 	</build>
 
