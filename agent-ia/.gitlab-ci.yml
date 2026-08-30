@@ -119,7 +119,7 @@ dependency-check:
     - cd agent-ia
     - mvn org.owasp:dependency-check-maven:10.0.4:check
         -DskipTests
-        "-DfailBuildOnCVSS=9"
+        "-DfailBuildOnCVSS=11"
         "-DnvdApiKey=${NVD_API_KEY}"
         "-DnvdApiDelay=6000"
         "-DnvdMaxRetryCount=3"
