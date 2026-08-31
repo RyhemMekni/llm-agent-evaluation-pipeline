@@ -121,9 +121,9 @@ dependency-check:
         "-DfailBuildOnCVSS=11"
         "-DnvdApiKey=${NVD_API_KEY}"
         "-DnvdApiDelay=6000"
-        "-DknownExploitedEnabled=false"
-        "-DossIndexAnalyzerEnabled=false"
-        "-DassemblyAnalyzerEnabled=false"
+        "-Danalyzer.ossindex.enabled=false"
+        "-Danalyzer.known.exploited.enabled=false"
+        "-Danalyzer.assembly.enabled=false"
     - echo "=== Dependency-Check termine ==="
   timeout: 45m
   allow_failure: true
