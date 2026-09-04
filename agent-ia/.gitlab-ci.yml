@@ -223,8 +223,9 @@ consolidated-report:
   script:
     - echo "============================================="
     - echo "  RAPPORT CONSOLIDE QUALITE + SECURITE"
-    - echo "  Pipeline: ${CI_PIPELINE_ID} | Commit: ${CI_COMMIT_SHORT_SHA}"
-    - echo "  Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+    - echo "  Pipeline ID -" ${CI_PIPELINE_ID}
+    - echo "  Commit -" ${CI_COMMIT_SHORT_SHA}
+    - date -u
     - echo "============================================="
     - echo ""
     - echo "--- QUALITE (Build & Tests) ---"
@@ -237,9 +238,7 @@ consolidated-report:
     - echo ""
     - echo "--- SAST (Analyse statique) ---"
     - echo "SonarQube          : voir job 'sonarqube-sast'"
-    - echo "  -> Dashboard     : http://localhost:9000/dashboard?id=agent-ia"
     - echo "OWASP Dependency-Check : voir job 'dependency-check'"
-    - echo "  -> Rapport HTML  : agent-ia/target/dependency-check-report.html"
     - echo ""
     - echo "--- DAST (Analyse dynamique) ---"
     - echo "OWASP ZAP          : voir job 'dast-zap'"
