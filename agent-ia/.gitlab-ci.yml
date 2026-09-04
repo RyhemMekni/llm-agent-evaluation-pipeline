@@ -3,6 +3,7 @@ stages:
   - test
   - evaluate
   - sast
+  - dast
 
 variables:
   MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
@@ -126,4 +127,55 @@ dependency-check:
         "-DassemblyAnalyzerEnabled=false"
     - echo "=== Dependency-Check termine ==="
   timeout: 45m
+  allow_failure: true
+
+
+dast-zap:
+  stage: dast
+  image: maven:3.9-eclipse-temurin-21
+  script:
+    - echo "=== DAST - OWASP ZAP scan ==="
+    - apt-get update -qq && apt-get install -y -qq iproute2 > /dev/null
+
+    - cd agent-ia
+    - mvn spring-boot:run
+        "-Dspring.ai.openai.api-key=${GROQ_API_KEY}"
+        "-Dspring.ai.openai.base-url=https://api.groq.com/openai/v1"
+        "-Dspring.ai.openai.chat.model=openai/gpt-oss-120b"
+        "-Dserver.port=8080" &
+    - for i in $(seq 1 20); do curl -sf http://localhost:8080/api/agent/health && break || sleep 10; done
+    - curl -f http://localhost:8080/api/agent/health || exit 1
+    - echo "Agent IA operationnel sur port 8080"
+
+    - TARGET_IP=$(hostname -i)
+    - TARGET_URL="http://${TARGET_IP}:8080/api/agent/health"
+    - echo "Cible ZAP = ${TARGET_URL}"
+
+    - curl -sf "http://zap:8090/JSON/core/action/newSession/?name=ci-scan&overwrite=true"
+
+    - echo "=== Spider ==="
+    - SPIDER_ID=$(curl -s "http://zap:8090/JSON/spider/action/scan/?url=${TARGET_URL}&recurse=true" | grep -oP '"scan":"\K[0-9]+')
+    - echo "Spider scanId=${SPIDER_ID}"
+    - |
+      for i in $(seq 1 30); do
+        STATUS=$(curl -s "http://zap:8090/JSON/spider/view/status/?scanId=${SPIDER_ID}" | grep -oP '"status":"\K[0-9]+')
+        echo "Spider status=${STATUS}%"
+        [ "$STATUS" = "100" ] && break
+        sleep 5
+      done
+
+    - echo "=== Active Scan ==="
+    - ASCAN_ID=$(curl -s "http://zap:8090/JSON/ascan/action/scan/?url=${TARGET_URL}" | grep -oP '"scan":"\K[0-9]+')
+    - echo "Active scan scanId=${ASCAN_ID}"
+    - |
+      for i in $(seq 1 60); do
+        STATUS=$(curl -s "http://zap:8090/JSON/ascan/view/status/?scanId=${ASCAN_ID}" | grep -oP '"status":"\K[0-9]+')
+        echo "Active scan status=${STATUS}%"
+        [ "$STATUS" = "100" ] && break
+        sleep 10
+      done
+
+    - echo "=== Resultats ZAP ==="
+    - curl -s "http://zap:8090/JSON/core/view/alerts/?baseurl=${TARGET_URL}"
+  timeout: 30m
   allow_failure: true
