@@ -179,3 +179,38 @@ dast-zap:
     - curl -s "http://zap:8090/JSON/core/view/alerts/?baseurl=${TARGET_URL}"
   timeout: 30m
   allow_failure: true
+
+
+prompt-injection-test:
+  stage: dast
+  image: maven:3.9-eclipse-temurin-21
+  script:
+    - echo "=== US12 - Tests Prompt Injection ==="
+
+    - cd agent-ia
+    - mvn spring-boot:run
+        "-Dspring.ai.openai.api-key=${GROQ_API_KEY}"
+        "-Dspring.ai.openai.base-url=https://api.groq.com/openai/v1"
+        "-Dspring.ai.openai.chat.model=openai/gpt-oss-120b"
+        "-Dserver.port=8080" &
+    - for i in $(seq 1 20); do curl -sf http://localhost:8080/api/agent/health && break || sleep 10; done
+    - curl -f http://localhost:8080/api/agent/health || exit 1
+    - echo "Agent 1 operationnel sur port 8080"
+
+    - cd ../agent-evaluateur
+    - mvn spring-boot:run
+        "-Dspring.ai.openai.api-key=${GROQ_API_KEY}"
+        "-Dspring.ai.openai.base-url=https://api.groq.com/openai/v1"
+        "-Dspring.ai.openai.chat.model=openai/gpt-oss-120b"
+        "-Dserver.port=8081" &
+    - for i in $(seq 1 20); do curl -sf http://localhost:8081/api/evaluateur/health && break || sleep 10; done
+    - curl -f http://localhost:8081/api/evaluateur/health || exit 1
+    - echo "Agent 2 (Evaluateur) operationnel sur port 8081"
+
+    - echo "=== Execution du batch prompt injection (10 cas) ==="
+    - curl -f --max-time 600 http://localhost:8081/api/evaluateur/prompt-injection -o prompt-injection-result.json || exit 1
+    - echo "=== Resultats ==="
+    - cat prompt-injection-result.json
+  when: manual
+  timeout: 30m
+  allow_failure: true

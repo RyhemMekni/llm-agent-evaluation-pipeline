@@ -4,6 +4,7 @@ import com.pfe.evaluateur.model.EvaluationRecord;
 import com.pfe.evaluateur.model.VerdictEvaluation;
 import com.pfe.evaluateur.service.BatchEvaluationService;
 import com.pfe.evaluateur.service.EvaluateurAgentService;
+import com.pfe.evaluateur.service.PromptInjectionService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
@@ -14,12 +15,15 @@ public class EvaluateurController {
 
     private final EvaluateurAgentService evaluateurService;
     private final BatchEvaluationService batchService;
+    private final PromptInjectionService promptInjectionService;
     private final List<EvaluationRecord> history = new ArrayList<>();
 
     public EvaluateurController(EvaluateurAgentService evaluateurService,
-            BatchEvaluationService batchService) {
+            BatchEvaluationService batchService,
+            PromptInjectionService promptInjectionService) {
         this.evaluateurService = evaluateurService;
         this.batchService = batchService;
+        this.promptInjectionService = promptInjectionService;
     }
 
     @GetMapping("/evaluer")
@@ -35,6 +39,11 @@ public class EvaluateurController {
     @GetMapping("/batch")
     public Map<String, Object> batch() {
         return batchService.executerBatch();
+    }
+
+    @GetMapping("/prompt-injection")
+    public Map<String, Object> promptInjection() {
+        return promptInjectionService.executerBatchPromptInjection();
     }
 
     @GetMapping("/history")
