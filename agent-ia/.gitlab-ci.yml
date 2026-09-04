@@ -4,6 +4,7 @@ stages:
   - evaluate
   - sast
   - dast
+  - report
 
 variables:
   MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
@@ -214,3 +215,39 @@ prompt-injection-test:
   when: manual
   timeout: 30m
   allow_failure: true
+
+
+consolidated-report:
+  stage: report
+  image: maven:3.9-eclipse-temurin-21
+  script:
+    - echo "============================================="
+    - echo "  RAPPORT CONSOLIDE QUALITE + SECURITE"
+    - echo "  Pipeline: ${CI_PIPELINE_ID} | Commit: ${CI_COMMIT_SHORT_SHA}"
+    - echo "  Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+    - echo "============================================="
+    - echo ""
+    - echo "--- QUALITE (Build & Tests) ---"
+    - echo "Build              : voir job 'build'"
+    - echo "Tests unitaires    : voir job 'test'"
+    - echo ""
+    - echo "--- MODEL EVALUATION (LLM-as-a-judge) ---"
+    - echo "Smoke test A2A     : voir job 'llm-as-judge'"
+    - echo "Batch complet      : voir job 'llm-as-judge-batch' (manuel, dataset 10 cas)"
+    - echo ""
+    - echo "--- SAST (Analyse statique) ---"
+    - echo "SonarQube          : voir job 'sonarqube-sast'"
+    - echo "  -> Dashboard     : http://localhost:9000/dashboard?id=agent-ia"
+    - echo "OWASP Dependency-Check : voir job 'dependency-check'"
+    - echo "  -> Rapport HTML  : agent-ia/target/dependency-check-report.html"
+    - echo ""
+    - echo "--- DAST (Analyse dynamique) ---"
+    - echo "OWASP ZAP          : voir job 'dast-zap'"
+    - echo "Prompt Injection   : voir job 'prompt-injection-test' (manuel, dataset 10 cas)"
+    - echo ""
+    - echo "============================================="
+    - echo "  Consulter chaque job ci-dessus dans l'onglet"
+    - echo "  'Jobs' de ce pipeline pour le detail complet."
+    - echo "============================================="
+  allow_failure: true
+  when: always
