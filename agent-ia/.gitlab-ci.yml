@@ -28,11 +28,6 @@ test:
   script:
     - cd agent-ia
     - mvn -B test
-  artifacts:
-    when: always
-    reports:
-      junit:
-        - agent-ia/target/surefire-reports/TEST-*.xml
 
 llm-as-judge:
   stage: evaluate
