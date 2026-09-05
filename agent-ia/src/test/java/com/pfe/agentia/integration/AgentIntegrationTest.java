@@ -1,5 +1,6 @@
 package com.pfe.agentia.integration;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -16,12 +17,12 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 /**
  * Test d'intégration complet : Agent Controller -> Agent Service ->
  * McpToolsService -> LLM reel (Groq)
- * Contrairement aux tests unitaires (AgentServiceTest), ce test appelle le VRAI
- * LLM.
- * Necessite une cle API Groq valide et une connexion internet.
- * S'auto-desactive proprement si la cle API n'est pas configuree (ex:
- * environnement CI restreint).
+ * Marque avec @Tag("integration") pour etre exclu du job "test" standard du
+ * pipeline CI
+ * (consomme des tokens Groq reels a chaque execution) et execute uniquement via
+ * le job dedie "integration-test" (manuel).
  */
+@Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class AgentIntegrationTest {
 

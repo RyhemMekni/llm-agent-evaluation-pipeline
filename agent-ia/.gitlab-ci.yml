@@ -27,7 +27,7 @@ test:
   image: maven:3.9-eclipse-temurin-21
   script:
     - cd agent-ia
-    - mvn -B test
+    - mvn -B test -Dgroups='!integration'
 
 llm-as-judge:
   stage: evaluate
@@ -91,6 +91,20 @@ llm-as-judge-batch:
     - cat batch-result.json
   when: manual
   timeout: 30m
+  allow_failure: true
+
+integration-test:
+  stage: evaluate
+  image: maven:3.9-eclipse-temurin-21
+  script:
+    - echo "=== US16 - Tests d integration reels (LLM Groq) ==="
+    - cd agent-ia
+    - mvn test
+        "-Dtest=AgentIntegrationTest"
+        "-Dspring.ai.openai.api-key=${GROQ_API_KEY}"
+        "-Dspring.ai.openai.base-url=https://api.groq.com/openai/v1"
+        "-Dspring.ai.openai.chat.model=openai/gpt-oss-120b"
+  when: manual
   allow_failure: true
 
 sonarqube-sast:
@@ -233,6 +247,7 @@ consolidated-report:
     - "echo MODEL EVALUATION - LLM as a judge"
     - "echo Smoke test A2A : voir job llm-as-judge"
     - "echo Batch complet : voir job llm-as-judge-batch manuel"
+    - "echo Tests integration LLM reel : voir job integration-test manuel"
     - "echo SAST - Analyse statique"
     - "echo SonarQube : voir job sonarqube-sast"
     - "echo OWASP Dependency-Check : voir job dependency-check"
