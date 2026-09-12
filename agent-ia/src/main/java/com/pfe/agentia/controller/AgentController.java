@@ -38,6 +38,7 @@ public class AgentController {
         response.put("question", question);
         response.put("reponse", result.get("reponse"));
         response.put("contexteMcpUtilise", result.get("contexteMcpUtilise"));
+        response.put("webSearchContent", result.get("webSearchContent"));
         response.put("agent", "DevSecOps Expert");
         response.put("status", "success");
 

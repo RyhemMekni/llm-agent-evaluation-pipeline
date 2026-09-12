@@ -1,12 +1,16 @@
 package com.pfe.agentia.service;
 
 import com.pfe.agentia.mcp.McpToolsService;
+import io.modelcontextprotocol.client.McpSyncClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.tool.ToolCallback;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -33,7 +37,13 @@ class AgentServiceTest {
 
     @BeforeEach
     void setUp() {
-        agentService = new AgentService(chatClientBuilder, mcpToolsService);
+        when(chatClientBuilder.defaultToolCallbacks(any(ToolCallback[].class)))
+                .thenReturn(chatClientBuilder);
+        when(chatClientBuilder.defaultOptions(any()))
+                .thenReturn(chatClientBuilder);
+        when(chatClientBuilder.build()).thenReturn(chatClient);
+
+        agentService = new AgentService(chatClientBuilder, List.of(), mcpToolsService);
     }
 
     @Test
@@ -43,7 +53,6 @@ class AgentServiceTest {
         String reponseLlm = "Le SAST est une technique d'analyse de securite...";
 
         when(mcpToolsService.getContexte(question)).thenReturn(contexteMcp);
-        when(chatClientBuilder.build()).thenReturn(chatClient);
         when(chatClient.prompt()).thenReturn(requestSpec);
         when(requestSpec.system((String) any())).thenReturn(requestSpec);
         when(requestSpec.user(question)).thenReturn(requestSpec);
@@ -63,7 +72,6 @@ class AgentServiceTest {
         String contexteMcp = "Docker Compose orchestre les services";
 
         when(mcpToolsService.getContexte(question)).thenReturn(contexteMcp);
-        when(chatClientBuilder.build()).thenReturn(chatClient);
         when(chatClient.prompt()).thenReturn(requestSpec);
         when(requestSpec.system((String) any())).thenReturn(requestSpec);
         when(requestSpec.user(question)).thenReturn(requestSpec);
@@ -80,7 +88,6 @@ class AgentServiceTest {
         String question = "Comment fonctionne le DAST ?";
 
         when(mcpToolsService.getContexte(anyString())).thenReturn("contexte generique");
-        when(chatClientBuilder.build()).thenReturn(chatClient);
         when(chatClient.prompt()).thenReturn(requestSpec);
         when(requestSpec.system((String) any())).thenReturn(requestSpec);
         when(requestSpec.user(anyString())).thenReturn(requestSpec);
