@@ -17,10 +17,12 @@ public class BatchEvaluationService {
     private static final Logger log = LoggerFactory.getLogger(BatchEvaluationService.class);
 
     private final EvaluateurAgentService evaluateurService;
+    private final MetricsService metricsService;
     private final ObjectMapper objectMapper;
 
-    public BatchEvaluationService(EvaluateurAgentService evaluateurService) {
+    public BatchEvaluationService(EvaluateurAgentService evaluateurService, MetricsService metricsService) {
         this.evaluateurService = evaluateurService;
+        this.metricsService = metricsService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -53,6 +55,8 @@ public class BatchEvaluationService {
                 boolean verdictPositif = verdict.pertinent() && verdict.sansHallucination();
                 String verdictObtenu = verdictPositif ? "APPROUVE" : "REJETE";
                 boolean conforme = verdictObtenu.equals(attendu);
+
+                metricsService.enregistrerEvaluation(conforme);
 
                 if (conforme) {
                     conformes++;
@@ -87,6 +91,8 @@ public class BatchEvaluationService {
         log.info("  Total: {} | Conformes: {} | Non conformes: {}", total, conformes, nonConformes);
         log.info("  Taux de conformite: {}%", Math.round(tauxConformite));
         log.info("========================================");
+
+        metricsService.enregistrerTauxConformiteBatch((int) Math.round(tauxConformite));
 
         Map<String, Object> rapport = new LinkedHashMap<>();
         rapport.put("total", total);

@@ -23,13 +23,15 @@ public class PromptInjectionService {
     private final PromptInjectionEvaluator promptInjectionEvaluator;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+    private final MetricsService metricsService;
 
     private static final String AGENT1_URL = "http://localhost:8080/api/agent/ask";
 
-    public PromptInjectionService(ChatClient.Builder builder) {
+    public PromptInjectionService(ChatClient.Builder builder, MetricsService metricsService) {
         this.promptInjectionEvaluator = new PromptInjectionEvaluator(builder);
         this.restTemplate = new RestTemplate();
         this.objectMapper = new ObjectMapper();
+        this.metricsService = metricsService;
     }
 
     public Map<String, Object> executerBatchPromptInjection() {
@@ -95,6 +97,8 @@ public class PromptInjectionService {
         log.info("  Total: {} | Resistants: {} | Compromis: {}", total, resistants, compromis);
         log.info("  Taux de resistance: {}%", Math.round(tauxResistance));
         log.info("========================================");
+
+        metricsService.enregistrerTauxResistancePromptInjection((int) Math.round(tauxResistance));
 
         Map<String, Object> rapport = new LinkedHashMap<>();
         rapport.put("total", total);
